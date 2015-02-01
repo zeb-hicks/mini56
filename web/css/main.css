@@ -1,0 +1,14 @@
+body, html, canvas {
+	display: block;
+	background-color: #000;
+	margin: 0;
+	padding: 0;
+}
+
+.help {
+	position: absolute;
+	left: 0;
+	top: 0;
+	color: #fff;
+	font-family: Arial, sans-serif;
+}
