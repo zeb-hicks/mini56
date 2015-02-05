@@ -38,6 +38,11 @@ var spawnpoint = [
     {x: tilesize * (mapwidth - 2), y: tilesize * (mapheight - 3), w: tilesize * 2, h: tilesize * 2}
 ];
 
+var gametime = 0;
+
+var speed = 1;
+var tspeed = 1;
+
 var players = [];
 function Player() {
     this.x = 0;
@@ -111,13 +116,22 @@ Player.prototype = {
 
             for (my = -1; my <= 1; my++) {
                 for (mx = -1; mx <= 1; mx++) {
-                    if (map[px + mx + (py + my) * mapwidth] == 1) {
-                        var pv = this.vy;
-                        col = collidePlayerWith(this, (px + mx) * tilesize, (py + my) * tilesize, tilesize, tilesize);
-                        if (Math.abs(pv - this.vy) > 100) splash = true;
-                        if (col !== false && col[1] > 0) {
-                            this.onground = true;
-                        }
+                    switch (map[px + mx + (py + my) * mapwidth]) {
+                        case 1:
+                            var pv = this.vy;
+                            col = collidePlayerWith(this, (px + mx) * tilesize, (py + my) * tilesize, tilesize, tilesize);
+                            if (Math.abs(pv - this.vy) > 100) splash = true;
+                            if (col !== false && col[1] > 0) {
+                                this.onground = true;
+                            }
+                            break;
+                        case 4:
+                            col = collidePlayerWith(this, (px + mx) * tilesize, (py + my) * tilesize + 8, tilesize, tilesize - 8);
+                            g.fillRect()
+                            if (!!col) {
+                                this.impale();
+                            }
+                            break;
                     }
                 }
             }
@@ -187,6 +201,10 @@ Player.prototype = {
         this.vx = 0;
         this.vy = 0;
         this.squish = 1;
+    },
+    impale: function() {
+        // this.
+        this.die();
     }
 };
 
@@ -221,23 +239,32 @@ Particle.prototype = {
             for (tx = -1; tx <= 1; tx++) {
                 mx = Math.floor(this.x / tilesize) + ty;
                 my = Math.floor(this.y / tilesize) + tx;
-                if (map[mx + my * mapwidth] == 1) {
-                    col = boxvsbox(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize);
-                    if (col !== false) {
-                        if (Math.abs(this.vx) + Math.abs(this.vy) > 200) {
-                            sjs.play('drip' + Math.floor(Math.random() * 5.99)).volume = 0.05;
+                switch (map[mx + my * mapwidth]) {
+                    case 1:
+                        col = boxvsbox(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize);
+                        if (col !== false) {
+                            if (Math.abs(this.vx) + Math.abs(this.vy) > 200) {
+                                sjs.play('drip' + Math.floor(Math.random() * 5.99)).volume = 0.05;
+                            }
+                            this.vx = 0;
+                            if (!boxvsbox(this.x - this.r, this.y - this.r + 10, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize)) {
+                                this.vy = 2;
+                            } else if (!boxvsbox(this.x - this.r + 3, this.y - this.r + 3, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize) ||
+                                       !boxvsbox(this.x - this.r - 3, this.y - this.r + 3, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize)) {
+                                this.vy = 1;
+                            } else {
+                                this.vy = 1;
+                            }
                         }
-                        this.vx = 0;
-                        if (!boxvsbox(this.x - this.r, this.y - this.r + 10, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize)) {
-                            this.vy = 2;
-                        } else if (!boxvsbox(this.x - this.r + 3, this.y - this.r + 3, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize) ||
-                                   !boxvsbox(this.x - this.r - 3, this.y - this.r + 3, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize)) {
-                            this.vy = 1;
-                        } else {
-                            this.vy = 1;
+                        break;
+                    case 4:
+                        col = boxvsbox(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2 + 8, tilesize, tilesize - 8);
+                        if (col !== false) {
+                            this.vx = 0;
+                            this.vy = 4;
                         }
-                    }
-                }
+                        break;
+                } 
             }
         }
 
@@ -305,10 +332,15 @@ function loop() {
     dt = Math.min(dt, 200);
     dt /= 1000;
     if (keys[32]) {
-        setTimeout(loop, 16);
+        tspeed = 0.1
     } else {
-        requestAnimationFrame(loop);
+        tspeed = 1;
     }
+    requestAnimationFrame(loop);
+
+    speed = speed += (tspeed - speed) * dt * 10;
+
+    gametime += dt * speed * 1000;
 
     g.clearRect(0, 0, cvs.width, cvs.height);
 
@@ -318,8 +350,8 @@ function loop() {
     //     subloop(0.01);
     // }
     // subloop(sdt);
-    subloop(dt);
-    draw(dt);
+    subloop(dt * speed);
+    draw(dt * speed);
 }
 
 function subloop(dt) {
@@ -511,7 +543,7 @@ function drawPlayer(p, dt) {
     var px = Math.round(p.x);
     var py = Math.round(p.y);
 
-    var theta = performance.now() % 300 / 150 * Math.PI;
+    var theta = gametime % 300 / 150 * Math.PI;
 
     g.fillStyle = p.team === 0 ? '#06c' : '#c00';
     g.fillRect(px - 8 - p.squish - Math.sin(theta) * p.wobble + p.jumpstretch * 6,
@@ -554,12 +586,12 @@ function drawParticles(dt) {
 }
 
 function drawLevel(dt) {
-    var x, y;
-    g.fillStyle = '#fff';
+    var x, y, i;
     for (y = 0; y < mapheight; y++) {
         for (x = 0; x < mapwidth; x++) {
             var tid = x + y * mapwidth;
             if (map[x + y * mapwidth] == 1) {
+                g.fillStyle = '#fff';
                 if (x === 0 || map[tid - 1] !== 1) {
                     g.fillRect(x * tilesize, y * tilesize, 2, tilesize);
                 }
@@ -573,7 +605,20 @@ function drawLevel(dt) {
                     g.fillRect(x * tilesize, y * tilesize + (tilesize-2), tilesize, 2);
                 }
             }
-            // if (map[x + y * mapwidth])
+            if (map[x + y * mapwidth] == 4) {
+                g.fillStyle = '#fff';
+                var x1 = x * tilesize;
+                var x2 = x1 + tilesize;
+                var y1 = y * tilesize;
+                var y2 = y1 + tilesize;
+                g.beginPath();
+                g.moveTo(x1, y2);
+                for (i = 0; i <= 8; i++) {
+                    g.lineTo((i/8) * tilesize + x1, (i%2) * tilesize + y1);
+                }
+                g.lineTo(x2, y2);
+                g.fill();
+            }
         }
     }
 }
