@@ -52,6 +52,7 @@ function Player() {
 
     this.team = 0; // Team 0 is blue, team 1 is red.
     this.alive = 1; // Alive
+    this.impaled = 0;
 
     this.state = 0; // State 0 is still. 1 is moving, 2 is jumping, 3 is moving and jumping, 4 is falling, 5 is moving and falling, 6 is popping
     this.onground = true;
@@ -77,7 +78,7 @@ function Player() {
 }
 Player.prototype = {
     update: function(dt) {
-        var i, px, py, mx, my, ldist, rdist, tdist, bdist, msc, msv, msi, col, splash;
+        var i, p, pi, px, py, mx, my, ldist, rdist, tdist, bdist, msc, msv, msi, col, splash;
 
         if (this.ai) {
 
@@ -90,7 +91,7 @@ Player.prototype = {
         }
 
         // this.vy += dt * (this.holdingJump ? 2400 : 5200);
-        this.vy += dt * 2400;
+        if (!this.impaled) this.vy += dt * 2400;
 
         this.vx = Math.max(Math.min(this.vx, 200), -200);
         this.vy = Math.max(Math.min(this.vy, 1200), -1200);
@@ -107,6 +108,26 @@ Player.prototype = {
         this.onground = false;
 
         while (msi++ < msc) {
+
+            if (this.impaled > 0) {
+                this.vy += (this.vy * 0.5 - this.vy) * dt * 60;
+                this.y += this.vy * dt * msv;
+                // console.log(this.vy, this.y);
+                if ((this.impaled -= dt) <= 0) {
+                    this.impaled = 0;
+                    this.die();
+                }
+                for (pi = 0; pi < 2; pi++) {
+                    p = new Particle();
+                    p.color = this.team === 0 ? '#06c' : '#c00';
+                    p.x = this.x;
+                    p.y = this.y;
+                    p.vx = Math.random() * 400 - 200;
+                    p.vy = Math.random() * 250 - 200;
+                    particles.push(p);
+                }
+                return;
+            }
 
             this.x += this.vx * dt * msv;
             this.y += this.vy * dt * msv;
@@ -126,9 +147,10 @@ Player.prototype = {
                             }
                             break;
                         case 4:
+                            var pvy = this.vy;
                             col = collidePlayerWith(this, (px + mx) * tilesize, (py + my) * tilesize + 8, tilesize, tilesize - 8);
-                            g.fillRect()
                             if (!!col) {
+                                this.vy = pvy;
                                 this.impale();
                             }
                             break;
@@ -138,8 +160,7 @@ Player.prototype = {
 
             if (splash) {
                 this.wobble = 1;
-                var p;
-                for (var pi = 0; pi < 10; pi++) {
+                for (pi = 0; pi < 10; pi++) {
                     p = new Particle();
                     p.color = this.team === 0 ? '#06c' : '#c00';
                     p.x = this.x;
@@ -204,7 +225,8 @@ Player.prototype = {
     },
     impale: function() {
         // this.
-        this.die();
+        this.impaled = 1;
+        // this.die();
     }
 };
 
@@ -219,6 +241,7 @@ function Particle() {
     this.mass = 0;
 
     this.life = 5 + Math.random() * 3;
+    this.maxlife = 8;
 
     this.color = '#fff';
 
@@ -258,21 +281,34 @@ Particle.prototype = {
                         }
                         break;
                     case 4:
-                        col = boxvsbox(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2 + 8, tilesize, tilesize - 8);
+                        col = boxvsbox(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, mx * tilesize + tilesize / 2, my * tilesize + tilesize / 2, tilesize, tilesize);
                         if (col !== false) {
-                            this.vx = 0;
-                            this.vy = 4;
+                            if ((((this.x % tilesize) / tilesize) * 4 + ((this.y % tilesize) / tilesize) / 2) % 1 < ((this.y % tilesize) / tilesize)) {
+                                if (this.vx > 5) {
+                                    if ((this.vx -= dt * 1300) < 5) this.vx = 5;
+                                } else if (this.vx < 0) {
+                                    if ((this.vx += dt * 1300) > 5) this.vx = 5;
+                                }
+                                if (this.vy > 5) {
+                                    if ((this.vy -= dt * 1300) < 5) this.vy = 5;
+                                } else if (this.vy < 0) {
+                                    if ((this.vy += dt * 1300) > 5) this.vy = 5;
+                                }
+                                // this.color = '#ff0';
+                            }
                         }
                         break;
-                } 
+                }
             }
         }
 
         this.life -= dt;
     },
     draw: function(dt) {
+        g.globalAlpha = Math.max(this.life, 0.01) / this.maxlife;
         g.fillStyle = this.color;
         g.fillRect(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2);
+        g.globalAlpha = 1;
         // if (this.vx > 50 || this.vy > 50) {
         //     g.globalAlpha = 0.5;
         //     g.fillRect(this.x - this.r - this.vx * 0.02, this.y - this.r - this.vy * 0.02, this.r * 2, this.r * 2);
@@ -463,8 +499,8 @@ function boxvsbox(ax, ay, aw, ah, bx, by, bw, bh) {
 
 function updateParticles(dt) {
     var i;
-    if (particles.length > 1000) {
-        particles.splice(0, particles.length - 1000);
+    if (particles.length > 2000) {
+        particles.splice(0, particles.length - 2000);
     }
     for (i = 0; i < particles.length; i++) {
         if (particles[i].life <= 0) {
