@@ -5,7 +5,10 @@
 
 var KEY_ALT = 18,
 	KEY_J = 74,
-	KEY_F5 = 116;
+	KEY_F5 = 116,
+	KEY_LEFT = 37,
+	KEY_RIGHT = 39,
+	KEY_UP = 38;
 
 Math.HPI = Math.PI / 2;
 Math.PI2 = Math.PI * 2;
@@ -99,7 +102,7 @@ Game.loop = function() {
 	dt = dt > 0.2 ? 0.2 : dt;
 
 	// Update input
-	
+
 	if (navigator.webkitGetGamepads !== undefined) {
 		Game.input.gamepad.prev = Game.input.gamepad.state;
 		Game.input.gamepad.state = navigator.getGamepads()[0];

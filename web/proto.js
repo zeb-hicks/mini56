@@ -365,7 +365,7 @@ function loop() {
     // }
     var dt = performance.now() - lt;
     lt += dt;
-    dt = Math.min(dt, 200);
+    dt = Math.min(dt, 64);
     dt /= 1000;
     if (keys[32]) {
         tspeed = 0.1
@@ -436,9 +436,9 @@ function collidePlayerWith(player, x, y, w, h) {
                 player.x -= sx;
                 if (Math.abs(sx) > 0.1) {
                     player.vx = 0;
-                    if (Math.abs(sx) > 1) {
-                        player.vy *= 0.2;
-                    }
+                    // if (Math.abs(sx) > 1) {
+                    //     player.vy *= 0.2;
+                    // }
                 }
                 sy = 0;
             } else {
